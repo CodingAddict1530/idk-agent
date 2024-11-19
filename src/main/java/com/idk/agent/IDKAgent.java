@@ -3,12 +3,18 @@ package com.idk.agent;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.Modifier;
 import java.util.*;
 
 public class IDKAgent {
 
     private static Instrumentation inst;
+
+    public static void setInst(Instrumentation inst) {
+
+        IDKAgent.inst = inst;
+    }
 
     public static void premain(String[] args, Instrumentation inst) {
 
@@ -25,13 +31,13 @@ public class IDKAgent {
         return inst;
     }
 
-    public static long getObjectSize(Object o) {
+    public static long getObjectSize(Object o, int depth) {
 
-        return inst.getObjectSize(o);
+        return calculateObjectSize(o, new ReferenceSet<>(), depth, 0);
     }
 
     // Increment starts from 0
-    private static long calculateObjectSize(Object o, Set<Object> visited, int depth, int increment) {
+    private static long calculateObjectSize(Object o, ReferenceSet<Object> visited, int depth, int increment) {
 
         if (o == null || visited.contains(o)) {
             return 0;
@@ -39,36 +45,43 @@ public class IDKAgent {
 
         visited.add(o);
         long size = inst.getObjectSize(o);
-        increment++;
+        int s = getPrimitiveSize(o);
+        if (s != 0) {
+            return size;
+        }
 
-        if (depth > 0 && increment != depth) {
+        if (depth > 0 && increment++ != depth) {
             Set<Field> fieldsSuper = new HashSet<>();
             Class<?> clazz = o.getClass();
-            Set<Field> fields = new HashSet<>(Arrays.asList(clazz.getDeclaredFields()));
+            Set<Field> fields = new HashSet<>();
+            boolean first = true;
 
-            clazz = clazz.getSuperclass();
             while (clazz != null) {
                 Field[] declaredFields = clazz.getDeclaredFields();
                 for (Field f : declaredFields) {
                     if (!Modifier.isStatic(f.getModifiers())) {
-                        fieldsSuper.add(f);
+                        if (first) {
+                            fields.add(f);
+                        } else {
+                            fieldsSuper.add(f);
+                        }
                     }
                 }
+                first = false;
                 clazz = clazz.getSuperclass();
             }
+            size += checkContainer(o, visited, depth, increment);
             for (Field field : fields) {
-                field.setAccessible(true);
+                try {
+                    field.setAccessible(true);
+                } catch (InaccessibleObjectException e) {
+                    continue;
+                }
                 try {
                     Object value = field.get(o);
                     if (value != null) {
                         if (!field.getType().isPrimitive()) {
-                            int s = getPrimitiveSize(value);
-                            if (s == 0) {
-                                size += calculateObjectSize(value, visited, depth, increment);
-                                size += checkContainer(field, value, visited, depth, increment);
-                            } else {
-                                size += s;
-                            }
+                            size += calculateObjectSize(value, visited, depth, increment);
                         }
                     }
                 } catch (IllegalAccessException e) {
@@ -76,16 +89,18 @@ public class IDKAgent {
                 }
             }
             for (Field field : fieldsSuper) {
-                field.setAccessible(true);
+                try {
+                    field.setAccessible(true);
+                } catch (InaccessibleObjectException e) {
+                    continue;
+                }
                 try {
                     Object value = field.get(o);
                     if (value != null) {
-                        int s = getPrimitiveSize(value);
-                        if (s == 0) {
+                        if (!field.getType().isPrimitive()) {
                             size += calculateObjectSize(value, visited, depth, increment);
-                            size += checkContainer(field, value, visited, depth, increment);
                         } else {
-                            size += s;
+                            size += inst.getObjectSize(value);
                         }
                     }
                 } catch (IllegalAccessException e) {
@@ -97,20 +112,15 @@ public class IDKAgent {
 
     }
 
-    private static long checkContainer(Field field, Object value,
-                                       Set<Object> visited, int depth, int increment) {
+    private static long checkContainer(Object value,
+                                       ReferenceSet<Object> visited, int depth, int increment) {
 
         long size = 0;
 
         if (value instanceof Iterable<?> iterable) {
             for (Object item : iterable) {
                 if (item != null) {
-                    int s = getPrimitiveSize(item);
-                    if (s == 0) {
-                        size += calculateObjectSize(item, visited, depth, increment);
-                    } else {
-                        size += s;
-                    }
+                    size += calculateObjectSize(item, visited, depth, increment);
                 }
             }
             return size;
@@ -119,20 +129,10 @@ public class IDKAgent {
         if (value instanceof Map<?, ?> map) {
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 if (entry.getKey() != null) {
-                    int s = getPrimitiveSize(entry.getKey());
-                    if (s == 0) {
-                        size += calculateObjectSize(entry.getKey(), visited, depth, increment);
-                    } else {
-                        size += s;
-                    }
+                    size += calculateObjectSize(entry.getKey(), visited, depth, increment);
                 }
                 if (entry.getValue() != null) {
-                    int s = getPrimitiveSize(entry.getValue());
-                    if (s == 0) {
-                        size += calculateObjectSize(entry.getValue(), visited, depth, increment);
-                    } else {
-                        size += s;
-                    }
+                    size += calculateObjectSize(entry.getValue(), visited, depth, increment);
                 }
             }
             return size;
@@ -142,25 +142,20 @@ public class IDKAgent {
             while (enumeration.hasMoreElements()) {
                 Object item = enumeration.nextElement();
                 if (item != null) {
-                    int s = getPrimitiveSize(item);
-                    if (s == 0) {
-                        size += calculateObjectSize(item, visited, depth, increment);
-                    } else {
-                        size += s;
-                    }
+                    size += calculateObjectSize(item, visited, depth, increment);
                 }
             }
             return size;
         }
 
-        if (field.getType().isArray()) {
+        if (value.getClass().isArray()) {
             int length = Array.getLength(value);
+            boolean isPrimitive = value.getClass().getComponentType().isPrimitive();
             for (int i = 0; i < length; i++) {
-                int s = getPrimitiveSize(Array.get(value, i));
-                if (s == 0) {
-                    size += calculateObjectSize(Array.get(value, i), visited, depth, increment);
+                if (isPrimitive) {
+                    size += inst.getObjectSize(Array.get(value, i));
                 } else {
-                    size += s;
+                    size += calculateObjectSize(Array.get(value, i), visited, depth, increment);
                 }
             }
             return size;
