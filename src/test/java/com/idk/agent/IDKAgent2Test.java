@@ -30,7 +30,8 @@ class IDKAgent2Test {
         ////sb.append("h".repeat(1000000));
         long start = System.currentTimeMillis();
         System.out.println(IDKAgent2.getObjectSize(map, 5, true));
-        System.out.println(System.currentTimeMillis() - start);
+        long time = System.currentTimeMillis() - start;
+        System.out.println(time);
         //System.out.println(IDKAgent2.getObjectSize(List.of(1,2,3,4), 5, true));
         //System.out.println(IDKAgent2.getObjectSize(new Integer[] {1,2,3,4}, 5, true));
         //System.out.println(IDKAgent2.getObjectSize(new IDKAgent2(), 5, true));
