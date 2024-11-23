@@ -2,14 +2,19 @@ plugins {
     id 'java'
 }
 
-group = 'com.idk.resourcemanager'
-version = '1.0-SNAPSHOT'
+group = 'com.idk.agent'
+version = '1.0.0'
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
+
+    testImplementation group: 'net.bytebuddy', name: 'byte-buddy-agent', version: '1.15.5'
+    testImplementation group: 'org.openjdk.jol', name: 'jol-core', version: '0.17'
+
+
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
 }
