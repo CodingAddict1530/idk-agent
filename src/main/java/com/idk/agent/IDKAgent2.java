@@ -5,16 +5,14 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.Modifier;
-import java.util.Enumeration;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class IDKAgent2 {
 
-    private String hey = "";
+    private static final Map<Class<?>, List<List<Field>>> cache = new ConcurrentHashMap<>();
 
     private static Instrumentation inst;
 
@@ -66,32 +64,39 @@ public class IDKAgent2 {
             Set<Field> fields = new HashSet<>();
             boolean first = true;
 
-            while (clazz != null) {
-                Field[] declaredFields = clazz.getDeclaredFields();
-                for (Field f : declaredFields) {
-                    if (!Modifier.isStatic(f.getModifiers())) {
-                        if (first) {
-                            fields.add(f);
-                        } else {
-                            fieldsSuper.add(f);
+            if (cache.containsKey(clazz)) {
+                fields = new HashSet<>(cache.get(clazz).get(0));
+                fieldsSuper = new HashSet<>(cache.get(clazz).get(1));
+            } else {
+                Class<?> loopClass = clazz;
+                while (loopClass != null) {
+                    Field[] declaredFields = loopClass.getDeclaredFields();
+                    for (Field f : declaredFields) {
+                        try {
+                            f.setAccessible(true);
+                        } catch (InaccessibleObjectException e) {
+                            if (openModules) {
+                                openModule(f, e);
+                                f.setAccessible(true);
+                            } else {
+                                continue;
+                            }
+                        }
+                        if (!Modifier.isStatic(f.getModifiers())) {
+                            if (first) {
+                                fields.add(f);
+                            } else {
+                                fieldsSuper.add(f);
+                            }
                         }
                     }
+                    first = false;
+                    loopClass = loopClass.getSuperclass();
                 }
-                first = false;
-                clazz = clazz.getSuperclass();
+                cache.putIfAbsent(clazz, List.of(List.copyOf(fields), List.copyOf(fieldsSuper)));
             }
             size += checkIsArray(o, visited, depth, increment, openModules);
             for (Field field : fields) {
-                try {
-                    field.setAccessible(true);
-                } catch (InaccessibleObjectException e) {
-                    if (openModules) {
-                        openModule(field, e);
-                        field.setAccessible(true);
-                    } else {
-                        continue;
-                    }
-                }
                 try {
                     Object value = field.get(o);
                     if (value != null) {
@@ -104,16 +109,6 @@ public class IDKAgent2 {
                 }
             }
             for (Field field : fieldsSuper) {
-                try {
-                    field.setAccessible(true);
-                } catch (InaccessibleObjectException e) {
-                    if (openModules) {
-                        openModule(field, e);
-                        field.setAccessible(true);
-                    } else {
-                        continue;
-                    }
-                }
                 try {
                     Object value = field.get(o);
                     if (value != null) {
