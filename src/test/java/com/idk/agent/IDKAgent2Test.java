@@ -27,13 +27,19 @@ class IDKAgent2Test {
             map.put(sb.toString(), List.of(i, 999));
         }
         //sb = new StringBuilder();
-        //sb.append("h".repeat(1000000));
+        ////sb.append("h".repeat(1000000));
         long start = System.currentTimeMillis();
         System.out.println(IDKAgent2.getObjectSize(map, 5, true));
         System.out.println(System.currentTimeMillis() - start);
+        //System.out.println(IDKAgent2.getObjectSize(List.of(1,2,3,4), 5, true));
+        //System.out.println(IDKAgent2.getObjectSize(new Integer[] {1,2,3,4}, 5, true));
         //System.out.println(IDKAgent2.getObjectSize(new IDKAgent2(), 5, true));
 
-        //System.out.println(ClassLayout.parseInstance(map).toPrintable());
+        Map<String, Integer> map2 = new HashMap<>();
+        map2.put("1", 1);
+        map2.put("1", 1);
+        //System.out.println(IDKAgent2.getObjectSize(map2, 5, true));
+        //System.out.println(ClassLayout.parseInstance(map2).toPrintable());
         System.out.println(ClassLayout.parseInstance("DDDDDD12").toPrintable());
         System.out.println(ClassLayout.parseInstance(List.of(1)).toPrintable());
         //System.out.println(ClassLayout.parseInstance(map.get(sb.toString()).get(0)).toPrintable());

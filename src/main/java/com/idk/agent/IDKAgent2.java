@@ -80,7 +80,7 @@ public class IDKAgent2 {
                 first = false;
                 clazz = clazz.getSuperclass();
             }
-            size += checkContainer(o, visited, depth, increment, openModules);
+            size += checkIsArray(o, visited, depth, increment, openModules);
             for (Field field : fields) {
                 try {
                     field.setAccessible(true);
@@ -162,41 +162,10 @@ public class IDKAgent2 {
 
     }
 
-    private static long checkContainer(Object value, ReferenceSet<Object> visited,
+    private static long checkIsArray(Object value, ReferenceSet<Object> visited,
                int depth, int increment, boolean openModules) {
 
         long size = 0;
-
-        if (value instanceof Iterable<?> iterable) {
-            for (Object item : iterable) {
-                if (item != null) {
-                    size += calculateObjectSize(item, visited, depth, increment, openModules);
-                }
-            }
-            return size;
-        }
-
-        if (value instanceof Map<?, ?> map) {
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (entry.getKey() != null) {
-                    size += calculateObjectSize(entry.getKey(), visited, depth, increment, openModules);
-                }
-                if (entry.getValue() != null) {
-                    size += calculateObjectSize(entry.getValue(), visited, depth, increment, openModules);
-                }
-            }
-            return size;
-        }
-
-        if (value instanceof Enumeration<?> enumeration) {
-            while (enumeration.hasMoreElements()) {
-                Object item = enumeration.nextElement();
-                if (item != null) {
-                    size += calculateObjectSize(item, visited, depth, increment, openModules);
-                }
-            }
-            return size;
-        }
 
         if (value.getClass().isArray()) {
             int length = Array.getLength(value);
