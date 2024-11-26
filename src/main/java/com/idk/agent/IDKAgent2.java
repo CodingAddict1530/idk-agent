@@ -6,16 +6,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.Modifier;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class IDKAgent2 {
-
-    private static final Map<Class<?>, Set<Field>> cache = new ConcurrentHashMap<>();
-
-    private static final Pattern patternOpens = Pattern.compile("\"opens (.+)\"");
-    private static final Pattern patternExports = Pattern.compile("\"exports (.+)\"");
 
     private static Instrumentation inst;
 
@@ -39,13 +31,13 @@ public class IDKAgent2 {
         return inst;
     }
 
-    public static long getObjectSize(Object o, int depth, boolean openModules) {
+    public static long getObjectSize(Object o, int depth) {
 
-        return calculateObjectSize(o, new ReferenceSet<>(), depth, 0, openModules);
+        return calculateObjectSize(o, new ReferenceSet<>(), depth, 0);
     }
 
     // Increment starts from 0
-    private static long calculateObjectSize(Object o, ReferenceSet<Object> visited, int depth, int increment, boolean openModules) {
+    private static long calculateObjectSize(Object o, ReferenceSet<Object> visited, int depth, int increment) {
 
         if (o == null || visited.contains(o)) {
             return 0;
@@ -53,50 +45,62 @@ public class IDKAgent2 {
 
         visited.add(o);
         long size = inst.getObjectSize(o);
-        if (checkIfPrimitiveArray(o)) {
-            return size;
-        }
         int s = getPrimitiveSize(o);
         if (s != 0) {
             return size;
         }
 
         if (depth > 0 && increment++ != depth) {
+            Set<Field> fieldsSuper = new HashSet<>();
             Class<?> clazz = o.getClass();
             Set<Field> fields = new HashSet<>();
+            boolean first = true;
 
-            if (cache.containsKey(clazz)) {
-                fields = cache.get(clazz);
-            } else {
-                Class<?> loopClass = clazz;
-                while (loopClass != null) {
-                    Field[] declaredFields = loopClass.getDeclaredFields();
-                    for (Field f : declaredFields) {
-                        try {
-                            f.setAccessible(true);
-                        } catch (InaccessibleObjectException e) {
-                            if (openModules) {
-                                openModule(f, e);
-                                f.setAccessible(true);
-                            } else {
-                                continue;
-                            }
-                        }
-                        if (!Modifier.isStatic(f.getModifiers())) {
+            while (clazz != null) {
+                Field[] declaredFields = clazz.getDeclaredFields();
+                for (Field f : declaredFields) {
+                    if (!Modifier.isStatic(f.getModifiers())) {
+                        if (first) {
                             fields.add(f);
+                        } else {
+                            fieldsSuper.add(f);
                         }
                     }
-                    loopClass = loopClass.getSuperclass();
                 }
-                cache.putIfAbsent(clazz, fields);
+                first = false;
+                clazz = clazz.getSuperclass();
             }
-            size += checkIsArray(o, visited, depth, increment, openModules);
+            size += checkContainer(o, visited, depth, increment);
             for (Field field : fields) {
+                try {
+                    field.setAccessible(true);
+                } catch (InaccessibleObjectException e) {
+                    continue;
+                }
                 try {
                     Object value = field.get(o);
                     if (value != null) {
                         if (!field.getType().isPrimitive()) {
-                            size += calculateObjectSize(value, visited, depth, increment, openModules);
+                            size += calculateObjectSize(value, visited, depth, increment);
+                        }
+                    }
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            for (Field field : fieldsSuper) {
+                try {
+                    field.setAccessible(true);
+                } catch (InaccessibleObjectException e) {
+                    continue;
+                }
+                try {
+                    Object value = field.get(o);
+                    if (value != null) {
+                        if (!field.getType().isPrimitive()) {
+                            size += calculateObjectSize(value, visited, depth, increment);
+                        } else {
+                            size += inst.getObjectSize(value);
                         }
                     }
                 } catch (IllegalAccessException e) {
@@ -108,61 +112,56 @@ public class IDKAgent2 {
 
     }
 
-    private static boolean checkIfPrimitiveArray(Object o) {
+    private static long checkContainer(Object value,
+                                       ReferenceSet<Object> visited, int depth, int increment) {
 
-        if (o.getClass().isArray()) {
-            return o.getClass().getComponentType().isPrimitive();
-        }
-        return false;
+        long size = 0;
 
-    }
-
-    private static void openModule(Field field, Exception e) {
-
-        Matcher matcher = patternOpens.matcher(e.getMessage());
-        if (matcher.find()) {
-
-            inst.redefineModule(
-                    field.getClass().getModule(),
-                    Set.of(),
-                    Map.of(),
-                    Map.of(matcher.group(1), Set.of(IDKAgent2.class.getModule())),
-                    Set.of(),
-                    Map.of()
-            );
-        } else {
-            matcher = patternExports.matcher(e.getMessage());
-
-            if (matcher.find()) {
-
-                inst.redefineModule(
-                        field.getClass().getModule(),
-                        Set.of(),
-                        Map.of(matcher.group(1), Set.of(IDKAgent2.class.getModule())),
-                        Map.of(),
-                        Set.of(),
-                        Map.of()
-                );
-            } else {
-                System.err.println("No match :(");
-            }
-        }
-
-    }
-
-    private static long checkIsArray(Object value, ReferenceSet<Object> visited,
-               int depth, int increment, boolean openModules) {
-
-        if (value.getClass().isArray()) {
-            int length = Array.getLength(value);
-            long size = 0;
-            for (int i = 0; i < length; i++) {
-                size += calculateObjectSize(Array.get(value, i), visited, depth, increment, openModules);
+        if (value instanceof Iterable<?> iterable) {
+            for (Object item : iterable) {
+                if (item != null) {
+                    size += calculateObjectSize(item, visited, depth, increment);
+                }
             }
             return size;
         }
 
-        return 0;
+        if (value instanceof Map<?, ?> map) {
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (entry.getKey() != null) {
+                    size += calculateObjectSize(entry.getKey(), visited, depth, increment);
+                }
+                if (entry.getValue() != null) {
+                    size += calculateObjectSize(entry.getValue(), visited, depth, increment);
+                }
+            }
+            return size;
+        }
+
+        if (value instanceof Enumeration<?> enumeration) {
+            while (enumeration.hasMoreElements()) {
+                Object item = enumeration.nextElement();
+                if (item != null) {
+                    size += calculateObjectSize(item, visited, depth, increment);
+                }
+            }
+            return size;
+        }
+
+        if (value.getClass().isArray()) {
+            int length = Array.getLength(value);
+            boolean isPrimitive = value.getClass().getComponentType().isPrimitive();
+            for (int i = 0; i < length; i++) {
+                if (isPrimitive) {
+                    size += inst.getObjectSize(Array.get(value, i));
+                } else {
+                    size += calculateObjectSize(Array.get(value, i), visited, depth, increment);
+                }
+            }
+            return size;
+        }
+
+        return size;
 
     }
 
