@@ -12,9 +12,10 @@ import java.util.regex.Pattern;
 
 public class IDKAgent2 {
 
-    private static final Map<Class<?>, List<Set<Field>>> cache = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Set<Field>> cache = new ConcurrentHashMap<>();
 
-    private static final Pattern pattern = Pattern.compile("\"opens (.+)\"");
+    private static final Pattern patternOpens = Pattern.compile("\"opens (.+)\"");
+    private static final Pattern patternExports = Pattern.compile("\"exports (.+)\"");
 
     private static Instrumentation inst;
 
@@ -61,14 +62,11 @@ public class IDKAgent2 {
         }
 
         if (depth > 0 && increment++ != depth) {
-            Set<Field> fieldsSuper = new HashSet<>();
             Class<?> clazz = o.getClass();
             Set<Field> fields = new HashSet<>();
-            boolean first = true;
 
             if (cache.containsKey(clazz)) {
-                fields = cache.get(clazz).get(0);
-                fieldsSuper = cache.get(clazz).get(1);
+                fields = cache.get(clazz);
             } else {
                 Class<?> loopClass = clazz;
                 while (loopClass != null) {
@@ -85,17 +83,12 @@ public class IDKAgent2 {
                             }
                         }
                         if (!Modifier.isStatic(f.getModifiers())) {
-                            if (first) {
-                                fields.add(f);
-                            } else {
-                                fieldsSuper.add(f);
-                            }
+                            fields.add(f);
                         }
                     }
-                    first = false;
                     loopClass = loopClass.getSuperclass();
                 }
-                cache.putIfAbsent(clazz, List.of(fields, fieldsSuper));
+                cache.putIfAbsent(clazz, fields);
             }
             size += checkIsArray(o, visited, depth, increment, openModules);
             for (Field field : fields) {
@@ -104,20 +97,6 @@ public class IDKAgent2 {
                     if (value != null) {
                         if (!field.getType().isPrimitive()) {
                             size += calculateObjectSize(value, visited, depth, increment, openModules);
-                        }
-                    }
-                } catch (IllegalAccessException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            for (Field field : fieldsSuper) {
-                try {
-                    Object value = field.get(o);
-                    if (value != null) {
-                        if (!field.getType().isPrimitive()) {
-                            size += calculateObjectSize(value, visited, depth, increment, openModules);
-                        } else {
-                            size += getPrimitiveSize(value);
                         }
                     }
                 } catch (IllegalAccessException e) {
@@ -140,7 +119,7 @@ public class IDKAgent2 {
 
     private static void openModule(Field field, Exception e) {
 
-        Matcher matcher = pattern.matcher(e.getMessage());
+        Matcher matcher = patternOpens.matcher(e.getMessage());
         if (matcher.find()) {
 
             inst.redefineModule(
@@ -152,7 +131,21 @@ public class IDKAgent2 {
                     Map.of()
             );
         } else {
-            System.err.println("No match :(");
+            matcher = patternExports.matcher(e.getMessage());
+
+            if (matcher.find()) {
+
+                inst.redefineModule(
+                        field.getClass().getModule(),
+                        Set.of(),
+                        Map.of(matcher.group(1), Set.of(IDKAgent2.class.getModule())),
+                        Map.of(),
+                        Set.of(),
+                        Map.of()
+                );
+            } else {
+                System.err.println("No match :(");
+            }
         }
 
     }
