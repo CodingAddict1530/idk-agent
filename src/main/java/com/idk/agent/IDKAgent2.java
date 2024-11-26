@@ -117,7 +117,7 @@ public class IDKAgent2 {
                         if (!field.getType().isPrimitive()) {
                             size += calculateObjectSize(value, visited, depth, increment, openModules);
                         } else {
-                            size += inst.getObjectSize(value);
+                            size += getPrimitiveSize(value);
                         }
                     }
                 } catch (IllegalAccessException e) {
@@ -160,22 +160,16 @@ public class IDKAgent2 {
     private static long checkIsArray(Object value, ReferenceSet<Object> visited,
                int depth, int increment, boolean openModules) {
 
-        long size = 0;
-
         if (value.getClass().isArray()) {
             int length = Array.getLength(value);
-            boolean isPrimitive = value.getClass().getComponentType().isPrimitive();
+            long size = 0;
             for (int i = 0; i < length; i++) {
-                if (isPrimitive) {
-                    size += inst.getObjectSize(Array.get(value, i));
-                } else {
-                    size += calculateObjectSize(Array.get(value, i), visited, depth, increment, openModules);
-                }
+                size += calculateObjectSize(Array.get(value, i), visited, depth, increment, openModules);
             }
             return size;
         }
 
-        return size;
+        return 0;
 
     }
 
