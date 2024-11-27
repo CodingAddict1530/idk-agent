@@ -16,7 +16,7 @@ public class IDKAgent2 {
         IDKAgent2.inst = inst;
     }
 
-    public static void premain(String[] args, Instrumentation inst) {
+    public static void premain(String args, Instrumentation inst) {
 
         IDKAgent2.inst = inst;
     }

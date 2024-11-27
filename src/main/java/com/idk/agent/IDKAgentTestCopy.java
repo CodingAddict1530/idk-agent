@@ -30,7 +30,7 @@ public class IDKAgentTestCopy {
         IDKAgentTestCopy.inst = inst;
     }
 
-    public static void premain(String[] args, Instrumentation inst) {
+    public static void premain(String args, Instrumentation inst) {
 
         IDKAgentTestCopy.inst = inst;
     }
