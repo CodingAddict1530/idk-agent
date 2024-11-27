@@ -1,5 +1,7 @@
 package com.idk.agent;
 
+import com.idk.classes.ReferenceSet;
+
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Array;
@@ -51,7 +53,7 @@ public class IDKAgent {
      * @param args Arguments passed to the agent.
      * @param inst The instrumentation for calculating shallow sizes.
      */
-    public static void premain(String[] args, Instrumentation inst) {
+    public static void premain(String args, Instrumentation inst) {
 
         IDKAgent.inst = inst;
     }

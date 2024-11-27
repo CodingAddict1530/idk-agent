@@ -1,4 +1,4 @@
-package com.idk.agent;
+package com.idk.classes;
 
 import java.util.HashSet;
 
