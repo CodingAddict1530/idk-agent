@@ -66,7 +66,7 @@ public class IDKAgent {
      */
     public static long getObjectSize(Object o) {
 
-        return calculateObjectSize(o, new ReferenceSet<>(), Integer.MAX_VALUE, 0, true);
+        return calculateObjectSize(o, new ReferenceSet(), Integer.MAX_VALUE, 0, true);
     }
 
     /**
@@ -81,7 +81,7 @@ public class IDKAgent {
      */
     public static long getObjectSize(Object o, int depth) {
 
-        return calculateObjectSize(o, new ReferenceSet<>(), depth, 0, true);
+        return calculateObjectSize(o, new ReferenceSet(), depth, 0, true);
     }
 
     /**
@@ -96,7 +96,7 @@ public class IDKAgent {
      */
     public static long getObjectSize(Object o, boolean openModules) {
 
-        return calculateObjectSize(o, new ReferenceSet<>(), Integer.MAX_VALUE, 0, openModules);
+        return calculateObjectSize(o, new ReferenceSet(), Integer.MAX_VALUE, 0, openModules);
     }
 
     /**
@@ -113,7 +113,7 @@ public class IDKAgent {
      */
     public static long getObjectSize(Object o, int depth, boolean openModules) {
 
-        return calculateObjectSize(o, new ReferenceSet<>(), depth, 0, openModules);
+        return calculateObjectSize(o, new ReferenceSet(), depth, 0, openModules);
     }
 
     /**
@@ -126,7 +126,7 @@ public class IDKAgent {
      * @param openModules Whether to open encapsulated modules or not.
      * @return The deep size of the object.
      */
-    private static long calculateObjectSize(Object o, ReferenceSet<Object> visited, int depth, int increment, boolean openModules) {
+    private static long calculateObjectSize(Object o, ReferenceSet visited, int depth, int increment, boolean openModules) {
 
         if (o == null || visited.contains(o)) {
             return 0;
@@ -256,7 +256,7 @@ public class IDKAgent {
      * @param openModules Whether to open encapsulated modules or not.
      * @return The deep size of the array or 0 if it is not an array.
      */
-    private static long checkIsArray(Object value, ReferenceSet<Object> visited,
+    private static long checkIsArray(Object value, ReferenceSet visited,
                int depth, int increment, boolean openModules) {
 
         if (value.getClass().isArray()) {

@@ -47,11 +47,11 @@ public class IDKAgentTestCopy {
 
     public static long getObjectSize(Object o, int depth, boolean openModules) {
 
-        return calculateObjectSize(o, new ReferenceSet<>(), depth, 0, openModules);
+        return calculateObjectSize(o, new ReferenceSet(), depth, 0, openModules);
     }
 
     // Increment starts from 0
-    private static long calculateObjectSize(Object o, ReferenceSet<Object> visited, int depth, int increment, boolean openModules) {
+    private static long calculateObjectSize(Object o, ReferenceSet visited, int depth, int increment, boolean openModules) {
 
         if (o == null || visited.contains(o)) {
             return 0;
@@ -156,7 +156,7 @@ public class IDKAgentTestCopy {
 
     }
 
-    private static long checkIsArray(Object value, ReferenceSet<Object> visited,
+    private static long checkIsArray(Object value, ReferenceSet visited,
                int depth, int increment, boolean openModules) {
 
         if (value.getClass().isArray()) {
