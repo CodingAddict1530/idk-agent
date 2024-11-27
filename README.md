@@ -4,6 +4,10 @@
 
 The **IDK Agent** is a Java agent designed to help developers calculate the **deep memory footprint** of objects in a JVM. Unlike shallow memory calculators, this agent can traverse object fields to determine the memory used, considering references and nested structures up to a specified depth.
 
+## Version 1.0.0
+The first version of the IDK Agent is available on GitHub. You can download the JAR from the release page here:  
+[IDK Agent v1.0.0 Release](https://github.com/CodingAddict1530/idk-agent/releases/tag/v1.0.0-alpha)
+
 This tool provides unparalleled flexibility by allowing users to:
 - Specify the `depth` of the object traversal.
 - Optionally `open modules` to access private and inaccessible fields for comprehensive memory analysis.

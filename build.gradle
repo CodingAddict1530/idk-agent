@@ -16,12 +16,9 @@ repositories {
 
 dependencies {
 
-    testImplementation group: 'net.bytebuddy', name: 'byte-buddy-agent', version: '1.15.5'
-    testImplementation group: 'org.openjdk.jol', name: 'jol-core', version: '0.17'
-
-
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+
 }
 
 tasks.jar {
@@ -29,6 +26,10 @@ tasks.jar {
         attributes(
                 "Premain-Class": "com.idk.agent.IDKAgent",
         )
+    }
+    from ('.') {
+        include 'README.md'
+        include 'LICENSE'
     }
 }
 
