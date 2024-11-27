@@ -6,7 +6,7 @@ The **IDK Agent** is a Java agent designed to help developers calculate the **de
 
 ## Version 1.0.0
 The first version of the IDK Agent is available on GitHub. You can download the JAR from the release page here:  
-[IDK Agent v1.0.0 Release](https://github.com/CodingAddict1530/idk-agent/releases/tag/v1.0.0)
+[IDK Agent v1.0.0 Release](https://github.com/CodingAddict1530/idk-agent/releases/tag/v1.0.0-alpha)
 
 This tool provides unparalleled flexibility by allowing users to:
 - Specify the `depth` of the object traversal.
