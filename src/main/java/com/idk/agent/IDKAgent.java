@@ -18,16 +18,12 @@
 
 package com.idk.agent;
 
-import com.idk.classes.ReferenceSet;
-
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.InaccessibleObjectException;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -86,7 +82,7 @@ public class IDKAgent {
      */
     public static long getObjectSize(Object o) {
 
-        return calculateObjectSize(o, new ReferenceSet(), Integer.MAX_VALUE, 0, true);
+        return calculateObjectSize(o, Collections.newSetFromMap(new IdentityHashMap<>()), Integer.MAX_VALUE, 0, true);
     }
 
     /**
@@ -101,7 +97,7 @@ public class IDKAgent {
      */
     public static long getObjectSize(Object o, int depth) {
 
-        return calculateObjectSize(o, new ReferenceSet(), depth, 0, true);
+        return calculateObjectSize(o, Collections.newSetFromMap(new IdentityHashMap<>()), depth, 0, true);
     }
 
     /**
@@ -116,7 +112,7 @@ public class IDKAgent {
      */
     public static long getObjectSize(Object o, boolean openModules) {
 
-        return calculateObjectSize(o, new ReferenceSet(), Integer.MAX_VALUE, 0, openModules);
+        return calculateObjectSize(o, Collections.newSetFromMap(new IdentityHashMap<>()), Integer.MAX_VALUE, 0, openModules);
     }
 
     /**
@@ -133,7 +129,7 @@ public class IDKAgent {
      */
     public static long getObjectSize(Object o, int depth, boolean openModules) {
 
-        return calculateObjectSize(o, new ReferenceSet(), depth, 0, openModules);
+        return calculateObjectSize(o, Collections.newSetFromMap(new IdentityHashMap<>()), depth, 0, openModules);
     }
 
     /**
@@ -146,7 +142,7 @@ public class IDKAgent {
      * @param openModules Whether to open encapsulated modules or not.
      * @return The deep size of the object.
      */
-    private static long calculateObjectSize(Object o, ReferenceSet visited, int depth, int increment, boolean openModules) {
+    private static long calculateObjectSize(Object o, Set<Object> visited, int depth, int increment, boolean openModules) {
 
         if (o == null || visited.contains(o)) {
             return 0;
@@ -276,7 +272,7 @@ public class IDKAgent {
      * @param openModules Whether to open encapsulated modules or not.
      * @return The deep size of the array or 0 if it is not an array.
      */
-    private static long checkIsArray(Object value, ReferenceSet visited,
+    private static long checkIsArray(Object value, Set<Object> visited,
                int depth, int increment, boolean openModules) {
 
         if (value.getClass().isArray()) {
