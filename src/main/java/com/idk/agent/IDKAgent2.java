@@ -51,11 +51,11 @@ public class IDKAgent2 {
 
     public static long getObjectSize(Object o, int depth) {
 
-        return calculateObjectSize(o, new ReferenceSet(), depth, 0);
+        return calculateObjectSize(o, Collections.newSetFromMap(new IdentityHashMap<>()), depth, 0);
     }
 
     // Increment starts from 0
-    private static long calculateObjectSize(Object o, ReferenceSet visited, int depth, int increment) {
+    private static long calculateObjectSize(Object o, Set<Object> visited, int depth, int increment) {
 
         if (o == null || visited.contains(o)) {
             return 0;
@@ -131,7 +131,7 @@ public class IDKAgent2 {
     }
 
     private static long checkContainer(Object value,
-                                       ReferenceSet visited, int depth, int increment) {
+                                       Set<Object> visited, int depth, int increment) {
 
         long size = 0;
 

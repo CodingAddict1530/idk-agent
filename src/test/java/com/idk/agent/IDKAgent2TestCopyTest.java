@@ -58,7 +58,9 @@ class IDKAgent2TestCopyTest {
             map.put(sb.toString(), List.of(i, 999));
         }
         long start = System.currentTimeMillis();
-        assertTimeout(Duration.ofMillis(3200), () -> IDKAgentTestCopy.getObjectSize(map, 5, true));
+        IDKAgentTestCopy.getObjectSize(map, 5, true);
+        System.out.println(System.currentTimeMillis() - start);
+        assertTimeout(Duration.ofMillis(3000), () -> IDKAgentTestCopy.getObjectSize(map, 5, true));
 
     }
 
